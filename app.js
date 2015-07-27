@@ -1,7 +1,7 @@
 function LiveLinks(fbname) {
 
   var firebase = new Firebase("https://" + fbname + ".firebaseio.com/");
-  this.fb = firebase;
+  this.firebase = firebase;
   var linksRef = firebase.child('links');
 
   this.submitLink = function(url, title) {
@@ -11,7 +11,7 @@ function LiveLinks(fbname) {
     });
   };
 
-  this.onLinksChanged = function() {}
+  this.onLinksChanged = function() {};
 
   linksRef.on('value', function(snapshot) {
     var links = snapshot.val();
@@ -30,19 +30,16 @@ function LiveLinks(fbname) {
 };
 
 
-
-
-
 $(document).ready(function() {
 
-  var ll = new LiveLinks('livelinks');
+	var ll = new LiveLinks('livelinks1234');
 
-  $(".link-form form").submit(function(event) {
+	$(".link-form form").submit(function(event) {
     event.preventDefault();
     ll.submitLink($(this).find('input.link-url').val(), $(this).find('input.link-title').val());
     $(this).find("input[type=text]").val("").blur();
     return false;
-  })
+  });
 
   ll.onLinksChanged = function(links) {
     $(".links-list").empty();
@@ -53,6 +50,7 @@ $(document).ready(function() {
   };
 
 });
+
 
 
 
