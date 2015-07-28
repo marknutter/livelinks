@@ -52,6 +52,8 @@ function LiveLinks(fbname) {
   this.onLinksChanged = function(links) {};
   this.onError = function(error) {};
 
+
+  // setup long-running firebase listeners 
   this.start = function() {
 
 	  firebase.onAuth(function(authResponse) {
@@ -87,6 +89,10 @@ function LiveLinks(fbname) {
 $(document).ready(function() {
 
 	var ll = new LiveLinks('livelinks1234');
+
+	ll.onError = function(error) {
+		alert(error.message);
+	}
 
 	$(".show-submit-link").click(function() {
 		$(".link-form").toggle();		
