@@ -4,22 +4,74 @@
     <script src="https://cdn.firebase.com/js/client/2.2.7/firebase.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
     <script src="app.js"></script>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+      body {
+        padding-top: 10px;
+      }
+      .header {
+        padding-bottom: 20px;
+      }
+      .header h3 {
+        margin-top: 10px;
+      }
+    </style>
   </head>
 
   <body>
-    <h1>LiveLinks</h1>
+    <div class="container">
 
-    <div class="link-form">
-      <form>
-        <input type="text" class="link-title" placeholder="link title.."/>
-        <input type="text" class="link-url" placeholder="link url.."/>
-        <input type="submit" value="submit"/>
-      </form>
-    </div>
+      <div class="header clearfix">
+        <nav>
+          <ul class="nav nav-pills pull-right auth-links">
+            <li role="presentation" class="logout" style="display:none;"><a href="#logout">Logout</a></li>
+            <li role="presentation" class="login" style="display:none;"><a href="#login">Login</a></li>
+            <li role="presentation" class="signup" style="display:none;"><a href="signup"> Signup</a></li>
+          </ul>
+        </nav>
+        <h3 class="text-muted">LiveLinks</h3>
+      </div>
 
-    <div class="links">
-      <ul class="links-list">
-      </ul>
+      <div class="panel panel-default auth-forms" style="display:none;">
+        <div class="panel-body login" style="display:none;">
+          <form>
+            <input required type="text" class="login-email" placeholder="email"/>
+            <input required type="password" class="login-password" placeholder="password"/>
+            <input type="submit" value="login"/>
+          </form>
+        </div>
+
+        <div class="panel-body signup" style="display:none;">
+          <form>
+            <input required type="text" class="signup-alias" placeholder="username"/>
+            <input required type="text" class="signup-email" placeholder="email"/>
+            <input required type="password" class="signup-password" placeholder="password"/>
+            <input required type="password" class="signup-password-confirm" placeholder="confirm password"/>
+            <input type="submit" value="signup"/>
+          </form>
+        </div>
+      </div>
+
+      
+
+      <div class="panel panel-default links">
+        <div class="panel-heading clearfix">
+          <h3 class="panel-title pull-left">Hottest Links</h3>
+          <button type="button" class="btn btn-default btn-sm pull-right show-submit-link">
+            <span class="glyphicon glyphicon-link" aria-hidden="true"></span> Submit Link
+          </button>
+        </div>
+        <div class="panel-body link-form" style="display:none">
+          <form>
+            <input required type="text" class="link-title" placeholder="link title"/>
+            <input required type="text" class="link-url" placeholder="link url"/>
+            <input type="submit" value="submit"/>
+          </form>
+        </div>
+        <ul class="list-group links-list">
+        </ul>
+      </div>
+
     </div>
 
 
