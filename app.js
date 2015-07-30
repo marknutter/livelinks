@@ -10,33 +10,31 @@ function LiveLinks(fbname) {
 
   this.submitLink = function(url, title) {
     url = url.substring(0,4) !== "http" ? "http://" + url : url;
-    linksRef.child(btoa(url)).update({
+    var linkRef = linksRef.child(btoa(url));
+    linkRef.update({
       title: title
     }, function(error) {
       if (error) { 
         instance.onError(error)
       } else {
-        linksRef.child(btoa(url))
-                .child('users')
-                .child(instance.auth.uid)
-                .set(true)
+        linkRef.child('users')
+               .child(instance.auth.uid)
+               .set(true)
         usersRef.child(instance.auth.uid)
                 .child('links')
                 .child(btoa(url))
                 .set(true);
-        instance.vote(url, 1);
-        linksRef.child(btoa(url))
-                .child('author')
-                .set(instance.auth.uid);        
-        linksRef.child(btoa(url))
-                .child('createdAt')
-                .set(Firebase.ServerValue.TIMESTAMP);
+        instance.vote(btoa(url), 1);
+        linkRef.child('author')
+               .set(instance.auth.uid);        
+        linkRef.child('createdAt')
+               .set(Firebase.ServerValue.TIMESTAMP);
       } 
     });
   };
 
-  this.vote = function(voteId, voteVal) {
-    linksRef.child(voteId)
+  this.vote = function(linkId, voteVal) {
+    linksRef.child(linkId)
             .child('votes')
             .child(instance.auth.uid)
             .set(voteVal);
@@ -54,7 +52,7 @@ function LiveLinks(fbname) {
   this.signup = function(alias, email, password) {
     aliasesRef.child(alias).once('value', function(snapshot) {
       if (snapshot.val()) {
-        instance.onError("That alias is taken");
+        instance.onError({message: "That alias is taken"});
       } else {
       	firebase.createUser({
       		email: email, 
