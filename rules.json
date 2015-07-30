@@ -1,0 +1,39 @@
+{
+    "rules": {
+        ".read": true,
+        ".write": true,
+        "links": {
+          ".write": "auth != null",
+          "$link": {
+            ".write": "auth != null",
+            "title": {
+              ".validate": "newData.val().length > 0 && newData.val().length < 200 && (!root.child('links').child($link).child('author').exists() || root.child('links').child($link).child('author').val() == auth.uid)"
+            },
+            "createdAt": {
+              ".validate": "!data.exists() || !newData.exists()"
+            },
+            "author": {
+              ".validate": "!data.exists() || !newData.exists()"
+            },
+            "votes": {
+              "$vote": {
+                ".validate": "auth.uid == $vote && (newData.val() === 1 || newData.val() === -1)" 
+              }
+            }
+          }
+        },
+        "users": {
+          "$user": {
+            ".write": "auth != null",
+            "alias": {
+              ".validate": "!root.child('aliases').child(newData.val()).exists()"
+            },
+            "links": {
+               "$link": {
+                  ".validate": "root.child('links').child($link).child('users').child($user).exists()" 
+               }
+            }
+          }
+        }
+    }
+}

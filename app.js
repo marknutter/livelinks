@@ -5,6 +5,7 @@ function LiveLinks(fbname) {
   var linksRef = firebase.child('links');
   var usersRef = firebase.child('users');
   var votesRef = firebase.child('votes');
+  var aliasesRef = firebase.child('aliases');
   var instance = this;
 
   this.submitLink = function(url, title) {
@@ -24,6 +25,12 @@ function LiveLinks(fbname) {
                 .child(btoa(url))
                 .set(true);
         instance.vote(url, 1);
+        linksRef.child(btoa(url))
+                .child('author')
+                .set(instance.auth.uid);        
+        linksRef.child(btoa(url))
+                .child('createdAt')
+                .set(Firebase.ServerValue.TIMESTAMP);
       } 
     });
   };
@@ -45,23 +52,30 @@ function LiveLinks(fbname) {
   };
 
   this.signup = function(alias, email, password) {
-  	firebase.createUser({
-  		email: email, 
-  		password: password
-  	}, function(error, authResponse) {
-  		if (error) {
-  			instance.onError(error);
-  		} else {
-	  		instance.auth = authResponse;
-	  		usersRef.child(instance.auth.uid).set({alias: alias}, function(error) {
-	  			if (error) {
-	  				instance.onError(error);
-	  			} else {
-	  				instance.login(email, password);
-	  			}
-	  		});
-  		}
-  	});
+    aliasesRef.child(alias).once('value', function(snapshot) {
+      if (snapshot.val()) {
+        instance.onError("That alias is taken");
+      } else {
+      	firebase.createUser({
+      		email: email, 
+      		password: password
+      	}, function(error, authResponse) {
+      		if (error) {
+      			instance.onError(error);
+      		} else {
+    	  		instance.auth = authResponse;
+    	  		usersRef.child(instance.auth.uid).set({alias: alias}, function(error) {
+    	  			if (error) {
+    	  				instance.onError(error);
+    	  			} else {
+                aliasesRef.child(alias).set(instance.auth.uid);
+    	  				instance.login(email, password);
+    	  			}
+    	  		});
+      		}
+      	});
+      }
+    })
   };
 
   this.logout = function() {
