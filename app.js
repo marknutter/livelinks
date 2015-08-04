@@ -6,30 +6,39 @@ function LiveLinks(fbname) {
   var usersRef = firebase.child('users');
   var votesRef = firebase.child('votes');
   var aliasesRef = firebase.child('aliases');
+  var daysRef = firebase.child('days');
+  var dateString = (new Date()).toDateString();
+  var todayRef = daysRef.child(dateString);
+  var numberOfLinksToShow = 5;
   var instance = this;
 
   this.submitLink = function(url, title) {
     url = url.substring(0,4) !== "http" ? "http://" + url : url;
-    var linkRef = linksRef.child(btoa(url));
+    var linkId = btoa(url);
+    var linkRef = linksRef.child(linkId);
     linkRef.update({
       title: title
     }, function(error) {
       if (error) { 
-        instance.onError(error)
+        instance.onError({message: "Link already added"});
       } else {
-        linkRef.child('users')
-               .child(instance.auth.uid)
-               .set(true)
-        usersRef.child(instance.auth.uid)
-                .child('links')
-                .child(btoa(url))
-                .set(true);
-        instance.vote(btoa(url), 1);
         linkRef.child('author')
                .set(instance.auth.uid);        
         linkRef.child('createdAt')
-               .set(Firebase.ServerValue.TIMESTAMP);
+               .set(Firebase.ServerValue.TIMESTAMP, function(error) {
+                 if (!error) {
+                   daysRef.child(dateString).child(linkId).set(1);
+                   instance.vote(linkId, 1);
+                 }
+               });
       } 
+      linkRef.child('users')
+               .child(instance.auth.uid)
+               .set(true)
+      usersRef.child(instance.auth.uid)
+              .child('links')
+              .child(linkId)
+              .set(true);
     });
   };
 
@@ -37,7 +46,20 @@ function LiveLinks(fbname) {
     linksRef.child(linkId)
             .child('votes')
             .child(instance.auth.uid)
-            .set(voteVal);
+            .set(voteVal, function() {
+              linksRef.child(linkId).child('votes').once('value', function(snapshot) {
+                var votes = snapshot.val();
+                var voteTotal = 0;
+                if (votes) {
+                  $.each(votes, function(userId, val) {
+                    voteTotal += val;
+                  });
+                }
+                daysRef.child(dateString)
+                       .child(linkId)
+                       .set(voteTotal);
+              })
+            });
   }
 
   this.login = function(email, password) {
@@ -80,6 +102,12 @@ function LiveLinks(fbname) {
   	firebase.unauth();
   };
 
+  this.showMoreLinks = function() {
+    numberOfLinksToShow += 5;
+    todayRef.orderByValue().limitToLast(numberOfLinksToShow).off('value', prepareLink);
+    todayRef.orderByValue().limitToLast(numberOfLinksToShow).on('value', prepareLink);
+  };
+
   function getSubmitters(linkId, userIds) {
     if (userIds) {
       $.each(userIds, function(userId) {
@@ -95,10 +123,38 @@ function LiveLinks(fbname) {
     }
   }
 
+  function getLinkMetadata(preparedLink) {
+    linksRef.child(preparedLink.id).once('value', function(snapshot) {
+      var link = snapshot.val();
+      preparedLink.title = snapshot.val().title;
+      instance.onLinkMetadataAdded(preparedLink);
+      getSubmitters(preparedLink.id, link.users);
+    });
+  }
+
+  function prepareLink(snapshot) {
+    var links = snapshot.val();
+    var preparedLinks = [];
+    $.each(links, function(url, voteTotal) {
+      var preparedLink = {
+        url: atob(url),
+        id: url,
+        voteTotal: voteTotal
+      };
+      getLinkMetadata(preparedLink);
+      preparedLinks.push(preparedLink);
+    });
+    var sortedLinks = preparedLinks.sort(function (a, b) {
+        return b.voteTotal -  a.voteTotal;
+    });
+    instance.onLinksChanged(sortedLinks);
+  }
+
   // overrideable event functions
   this.onLogin = function(user) {};
   this.onLogout = function() {};
   this.onLinksChanged = function(links) {};
+  this.onLinkMetadataAdded = function(links) {};
   this.onLinkUserAdded = function(linkId, alias) {};
   this.onError = function(error) {};
 
@@ -118,28 +174,7 @@ function LiveLinks(fbname) {
 	  	}
 	  });
 
-	  linksRef.on('value', function(snapshot) {
-	    var links = snapshot.val();
-	    var preparedLinks = [];
-	    for (var url in links) {
-	      if (links.hasOwnProperty(url)) {
-          var voteTotal = 0;
-          if (links[url].votes) {
-            $.each(links[url].votes, function(userId, val) {
-              voteTotal += val;
-            });
-          }
-	        preparedLinks.push({
-	          title: links[url].title,
-	          url: atob(url),
-            id: url,
-            voteTotal: voteTotal
-	        })
-        getSubmitters(url, links[url].users);  
-        }
-	    }
-	    instance.onLinksChanged(preparedLinks);
-	  });
+	  todayRef.orderByValue().limitToLast(numberOfLinksToShow).on('value', prepareLink);
 
   };
 
@@ -149,6 +184,7 @@ function LiveLinks(fbname) {
 $(document).ready(function() {
 
 	var ll = new LiveLinks('livelinks1234');
+  var numberOfLinksShowing = 0;
 
 	ll.onError = function(error) {
 		alert(error.message);
@@ -160,18 +196,26 @@ $(document).ready(function() {
 
 	$(".link-form form").submit(function(event) {
     ll.submitLink($(this).find('input.link-url').val(), $(this).find('input.link-title').val());
-    $(".link-form").hide();
+    $(this).find('input.link-url').val('');
+    $(this).find('input.link-title').val('');
+    $(this).parent().hide();
     return false;
   });
 
   ll.onLinksChanged = function(links) {
+    if (links.length - numberOfLinksShowing < 5) {
+      $(".show-more").hide();
+    } else {
+      $(".show-more").show();
+    }
+    numberOfLinksShowing = links.length
     $(".links-list").empty();
     links.map(function(link) {
-      var linkElement = "<li data-id='" + link.id + "' class='list-group-item'>"  + 
+      var linkElement = "<li data-id='" + link.id + "' class='list-group-item link'>"  + 
                           "<span class='vote-total'>" + link.voteTotal + "</span>" +
                           "<span class='glyphicon glyphicon-triangle-top up vote' data-val='1'></span>"   +
                           "<span class='glyphicon glyphicon-triangle-bottom down vote' data-val='-1'></span>"   +
-                          "<a href='" + link.url + "'>" + link.title + "</a><br>" + 
+                          "<a href='" + link.url + "'></a><br>" + 
                           "<span class='submitters'>submitted by:</span>"         + 
                         "</li>";
       $(".links-list").append(linkElement);
@@ -180,6 +224,10 @@ $(document).ready(function() {
     $(".vote").click(function(event) {
       ll.vote($(this).parent().data().id, $(this).data().val);
     });
+  };
+
+  ll.onLinkMetadataAdded = function(link) {
+    $("[data-id='" + link.id + "']").find("a").text(link.title);
   };
 
   ll.onLinkUserAdded = function(linkId, alias) {
@@ -232,7 +280,10 @@ $(document).ready(function() {
     return false;
   });
 
-  
+  $(".show-more").click(function() {
+    ll.showMoreLinks();
+    return false;
+  })
 
 
   ll.start();
