@@ -104,8 +104,8 @@ function LiveLinks(fbname) {
 
   this.showMoreLinks = function() {
     numberOfLinksToShow += 5;
-    todayRef.orderByValue().limitToLast(numberOfLinksToShow).off('value', prepareLink);
-    todayRef.orderByValue().limitToLast(numberOfLinksToShow).on('value', prepareLink);
+    todayRef.orderByValue().limitToLast(numberOfLinksToShow).off('value', prepareLinks);
+    todayRef.orderByValue().limitToLast(numberOfLinksToShow).on('value', prepareLinks);
   };
 
   function getSubmitters(linkId, userIds) {
@@ -132,22 +132,24 @@ function LiveLinks(fbname) {
     });
   }
 
-  function prepareLink(snapshot) {
+  function prepareLinks(snapshot) {
     var links = snapshot.val();
     var preparedLinks = [];
-    $.each(links, function(url, voteTotal) {
-      var preparedLink = {
-        url: atob(url),
-        id: url,
-        voteTotal: voteTotal
-      };
-      getLinkMetadata(preparedLink);
-      preparedLinks.push(preparedLink);
-    });
-    var sortedLinks = preparedLinks.sort(function (a, b) {
-        return b.voteTotal -  a.voteTotal;
-    });
-    instance.onLinksChanged(sortedLinks);
+    if (links) {
+      $.each(links, function(url, voteTotal) {
+        var preparedLink = {
+          url: atob(url),
+          id: url,
+          voteTotal: voteTotal
+        };
+        getLinkMetadata(preparedLink);
+        preparedLinks.push(preparedLink);
+      });
+      var sortedLinks = preparedLinks.sort(function (a, b) {
+          return b.voteTotal -  a.voteTotal;
+      });
+      instance.onLinksChanged(sortedLinks);
+    }
   }
 
   // overrideable event functions
@@ -174,7 +176,7 @@ function LiveLinks(fbname) {
 	  	}
 	  });
 
-	  todayRef.orderByValue().limitToLast(numberOfLinksToShow).on('value', prepareLink);
+	  todayRef.orderByValue().limitToLast(numberOfLinksToShow).on('value', prepareLinks);
 
   };
 
