@@ -7,6 +7,8 @@ function LiveLinks(fbname) {
   var votesRef = firebase.child('votes');
   var aliasesRef = firebase.child('aliases');
   var daysRef = firebase.child('days');
+  var connectedRef = firebase.child('.info/connected');
+  var viewersRef = firebase.child('viewers');
   var dateString = (new Date()).toDateString();
   var todayRef = daysRef.child(dateString);
   var numberOfLinksToShow = 5;
@@ -46,19 +48,21 @@ function LiveLinks(fbname) {
     linksRef.child(linkId)
             .child('votes')
             .child(instance.auth.uid)
-            .set(voteVal, function() {
-              linksRef.child(linkId).child('votes').once('value', function(snapshot) {
-                var votes = snapshot.val();
-                var voteTotal = 0;
-                if (votes) {
-                  $.each(votes, function(userId, val) {
-                    voteTotal += val;
-                  });
+            .once('value', function(snapshot) {
+              
+              snapshot.ref().set(voteVal, function(error) {
+                // if a user changes an existing vote, it needs to swing 2 votes instead of one.
+                if (snapshot.val() && snapshot.val() !== voteVal) {
+                  voteVal = voteVal*2;
                 }
-                daysRef.child(dateString)
-                       .child(linkId)
-                       .set(voteTotal);
-              })
+                if (!error) {
+                  daysRef.child(dateString)
+                         .child(linkId)
+                         .transaction(function(currentValue) {
+                           return (currentValue || 0) + voteVal;
+                         });
+                }
+              });
             });
   }
 
@@ -127,6 +131,7 @@ function LiveLinks(fbname) {
     linksRef.child(preparedLink.id).once('value', function(snapshot) {
       var link = snapshot.val();
       preparedLink.title = snapshot.val().title;
+      preparedLink.myVote = link.votes[instance.auth.uid];
       instance.onLinkMetadataAdded(preparedLink);
       getSubmitters(preparedLink.id, link.users);
     });
@@ -158,6 +163,7 @@ function LiveLinks(fbname) {
   this.onLinksChanged = function(links) {};
   this.onLinkMetadataAdded = function(links) {};
   this.onLinkUserAdded = function(linkId, alias) {};
+  this.onViewerCountChanged = function(viewerCount) {};
   this.onError = function(error) {};
 
 
@@ -177,6 +183,17 @@ function LiveLinks(fbname) {
 	  });
 
 	  todayRef.orderByValue().limitToLast(numberOfLinksToShow).on('value', prepareLinks);
+
+    connectedRef.on('value', function(snapshot) {
+      if (snapshot.val() === true) {
+        var viewerRef = viewersRef.push(Firebase.ServerValue.TIMESTAMP);
+        viewerRef.onDisconnect().remove();
+      }
+    });
+
+    viewersRef.on('value', function(snapshot) {
+      instance.onViewerCountChanged(snapshot.numChildren());
+    });
 
   };
 
@@ -213,6 +230,7 @@ $(document).ready(function() {
     numberOfLinksShowing = links.length
     $(".links-list").empty();
     links.map(function(link) {
+      
       var linkElement = "<li data-id='" + link.id + "' class='list-group-item link'>"  + 
                           "<span class='vote-total'>" + link.voteTotal + "</span>" +
                           "<span class='glyphicon glyphicon-triangle-top up vote' data-val='1'></span>"   +
@@ -229,7 +247,10 @@ $(document).ready(function() {
   };
 
   ll.onLinkMetadataAdded = function(link) {
-    $("[data-id='" + link.id + "']").find("a").text(link.title);
+    var myVoteClass = !link.myVote || (link.myVote === 1 ? "upvoted" : "downvoted");
+    $("[data-id='" + link.id + "']").removeClass("upvoted downvoted")
+                                    .addClass(myVoteClass)
+                                    .find("a").text(link.title);
   };
 
   ll.onLinkUserAdded = function(linkId, alias) {
@@ -237,6 +258,10 @@ $(document).ready(function() {
     if (submitters.text().indexOf(alias) == -1) {
       submitters.append(" " + alias);
     }
+  };
+
+  ll.onViewerCountChanged = function(viewerCount) {
+    $("#viewer-count").text(viewerCount);
   };
 
   ll.onLogin = function() {
