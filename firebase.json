@@ -1,0 +1,34 @@
+{
+  "firebase": "livelinks1234",
+  "public": ".",
+  "rules": "rules.json",
+  "redirects": [
+    {
+      "source" : "/firebase",
+      "destination" : "https://www.firebase.com",
+      "type" : 302
+    }
+  ],
+  "rewrites": [ 
+    {
+      "source": "**",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source" : "**/*.@(js|html|jpg|jpeg|gif|png)",
+      "headers" : [ 
+        {
+          "key" : "Cache-Control",
+          "value" : "max-age=7200"
+        } 
+      ]
+    }
+  ],
+  "ignore": [
+    "firebase.json",
+    "**/.*",
+    "**/node_modules/**"
+  ]
+}

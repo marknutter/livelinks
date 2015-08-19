@@ -6,20 +6,18 @@
           ".write": "auth != null",
           "$link": {
             ".write": "auth != null",
-            "title": {
-              ".validate": "newData.val().length > 0 && newData.val().length < 200 && (!root.child('links').child($link).child('author').exists() || root.child('links').child($link).child('author').val() == auth.uid)"
-            },
             "createdAt": {
-              ".validate": "!data.exists() || !newData.exists()"
+              ".validate": "(!data.exists() || !newData.exists()) && newData.val() == now"
             },
             "author": {
               ".validate": "!data.exists() || !newData.exists()"
             },
             "votes": {
               "$vote": {
-                ".validate": "auth.uid == $vote && (newData.val() === 1 || newData.val() === -1)" 
+                ".validate": "auth.uid == $vote && (newData.val() === 1 || newData.val() === -1) && (newData.val() != data.val())" 
               }
-            }
+            },
+            ".indexOn": ["voteCount", "createdAt"]
           }
         },
         "users": {
@@ -33,6 +31,11 @@
                   ".validate": "root.child('links').child($link).child('users').child($user).exists()" 
                }
             }
+          }
+        },
+        "days": {
+          "$day": {
+            ".indexOn": [".value"] 
           }
         }
     }
